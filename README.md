@@ -1,15 +1,18 @@
-**Riadenie servomotora s ultrazvukovy snimacom.**
-Aby malo zmysel co vobec riadim a ako sa bude hybat servo, a zaroven sa da logicky riadit a nastavovat hodnotu zvolena tema:
+**Riadenie servomotora s ultrazvukovym snimacom.**
+Aby malo zmysel co vobec riadim, a ako sa bude hybat servo, a zaroven sa da logicky riadit a nastavovat hodnotu zvolena tema:
 
 Riadenie servomotorceka ktory bude otvarat a zatvarat branu (napr. pre auta na parkovisku)
 Cez snimac sledujem vzdialenost a ak je hodnota mensia ako nastavena zvolena cez web (20cm default),
 tak sa brana pre auto otvori, ak sa potom uvazovane auto od snimaca vzdiali-prejde cez branu (2cm threshold)
-tak sa brana zatvori,
+tak sa brana zatvori. 
+
+Do databaz budem ukladat vzdialenost zo snimaca a informacie o Open/Close brany (pohyby serva)
 
 Otvorenie a zatvorenie brany riadi aj pridane dve LEDky (jednoduchy Semafor)
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Záverečné zadanie ku skúške
 
-**Záverečné zadanie ku skúške**
 Cieľom zadania je monitorovať resp. riadiť signály získané z reálnych senzorov resp. simulačných a virtuálnych prostredí. Monitorovanie resp. riadenie sa má uskutočňovať prostredníctvom webovej aplikácie, aby bola naplnená koncepcia IoT.
 
 Hardvér a softvér je podľa individuálnych možností. Preferuje sa využitie reálnej platformy Arduino a Raspberry.
