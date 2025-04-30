@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Brána - Graf vzdialenosti</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <style>
+    nav {
+      margin-bottom: 10px;
+    }
+    nav a {
+      margin-right: 10px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Ovládanie</a> |
+	<a href="/graph">Graf</a> |
+	<a href="/gauge">Ciferník</a>
+  </nav>
+  <hr>
+
+  <h1>Živý graf vzdialenosti (cm)</h1>
+  <canvas id="distanceChart" width="600" height="300"></canvas>
+
+  <script>
+    const ctx = document.getElementById('distanceChart').getContext('2d');
+    const socket = io();
+
+    const data = {
+      labels: [],
+      datasets: [{
+        label: 'Vzdialenosť (cm)',
+        data: [],
+        borderColor: 'blue',
+        backgroundColor: 'rgba(173, 216, 230, 0.2)',
+        tension: 0.1,
+        pointBackgroundColor: []
+      }]
+    };
+
+    const config = {
+      type: 'line',
+      data: data,
+      options: {
+        responsive: true,
+        animation: false,
+        scales: {
+          y: {
+            min: 0,
+            max: 55,
+            title: { display: true, text: 'Vzdialenosť (cm)' }
+          },
+          x: {
+            title: { display: true, text: 'Poradie merania' }
+          }
+        },
+        plugins: {
+          legend: {
+            display: true
+          }
+        }
+      }
+    };
+
+    const chart = new Chart(ctx, config);
+    let count = 0;
+
+    socket.on('connect', () => {
+      setInterval(() => {
+        socket.emit('request_data');
+      }, 1000);
+    });
+
+    socket.on('serial_data', (payload) => {
+      const lines = payload.data;
+      const last = lines[lines.length - 1];
+
+      const match = last.match(/Vzdialenosť:\s*([\d.]+)/);
+      if (match) {
+        let value = parseFloat(match[1]);
+        if (value > 50) value = 50;
+
+        // Vyber farbu podľa zóny:
+        let pointColor = 'gray';
+        if (value <= 15) {
+          pointColor = 'red';
+        } else if (value <= 30) {
+          pointColor = 'orange';
+        } else {
+          pointColor = 'green';
+        }
+
+        data.labels.push(count++);
+        data.datasets[0].data.push(value);
+        data.datasets[0].pointBackgroundColor.push(pointColor);
+
+        if (data.labels.length > 30) {
+          data.labels.shift();
+          data.datasets[0].data.shift();
+          data.datasets[0].pointBackgroundColor.shift();
+        }
+
+        chart.update();
+      }
+    });
+  </script>
+</body>
+</html>

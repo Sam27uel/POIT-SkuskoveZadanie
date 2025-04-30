@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Brána - Ovládanie</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <style>
+    nav {
+      margin-bottom: 10px;
+    }
+    nav a {
+      margin-right: 10px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    #semafor {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: gray;
+      border: 2px solid #000;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Ovládanie</a> |
+	<a href="/graph">Graf</a> |
+	<a href="/gauge">Ciferník</a>
+  </nav>
+  <hr>
+
+  <h1>Riadenie brány pomocou senzora</h1>
+
+  <button onclick="openSerial()">Open</button><br><br>
+
+  <label>Threshold (cm): <span id="thresholdValue">10</span></label><br>
+  <input type="range" min="1" max="50" value="10" id="thresholdSlider"
+         onchange="updateThreshold(this.value)"><br><br>
+
+  <button onclick="startMonitoring()">Start</button><br><br>
+
+  <h3>Stav brány:</h3>
+  <div id="semafor"></div><br>
+
+  <h3>Údaje zo senzora:</h3>
+  <ul id="dataList"></ul>
+
+  <script>
+    const socket = io();
+    let lastStatus = "unknown"; // uchováva posledný známy stav brány
+
+    function openSerial() {
+      fetch('/open', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          alert(data.success ? "Spojenie nadviazané" : "Zlyhanie spojenia");
+        });
+    }
+
+    function updateThreshold(val) {
+      document.getElementById("thresholdValue").innerText = val;
+      fetch('/set_threshold', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `threshold=${val}`
+      });
+    }
+
+    function startMonitoring() {
+      fetch('/start', { method: 'POST' });
+    }
+
+    socket.on('connect', () => {
+      setInterval(() => {
+        socket.emit('request_data');
+      }, 1000);
+    });
+
+    socket.on('serial_data', data => {
+      const list = document.getElementById('dataList');
+      const semafor = document.getElementById('semafor');
+      list.innerHTML = '';
+
+      let status = null;
+
+      data.data.forEach(line => {
+        const li = document.createElement('li');
+        li.innerText = line;
+        list.appendChild(li);
+
+        if (line.includes("otvorená")) {
+          status = "open";
+        } else if (line.includes("zatvorená")) {
+          status = "closed";
+        }
+      });
+
+      if (status !== null) {
+        lastStatus = status;
+      }
+
+      if (lastStatus === "open") {
+        semafor.style.backgroundColor = "green";
+      } else if (lastStatus === "closed") {
+        semafor.style.backgroundColor = "red";
+      } else {
+        semafor.style.backgroundColor = "gray";
+      }
+    });
+  </script>
+</body>
+</html>
