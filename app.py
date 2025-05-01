@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 import serial_manager
 
@@ -22,9 +22,9 @@ def gauge():
 
 @app.route('/open', methods=['POST'])
 def open_serial():
+    # Vždy sa pokús o otvorenie a inicializáciu
     global serial_opened
-    if not serial_opened:
-        serial_opened = serial_manager.init_serial()
+    serial_opened = serial_manager.init_serial()
     return jsonify({"success": serial_opened})
 
 @app.route('/set_threshold', methods=['POST'])
@@ -38,13 +38,23 @@ def start_monitoring():
     serial_manager.start_monitoring()
     return jsonify({"status": "started"})
 
+@app.route('/stop', methods=['POST'])
+def stop_monitoring():
+    serial_manager.stop_monitoring()
+    return jsonify({"status": "stopped"})
+
+@app.route('/close', methods=['POST'])
+def close_serial():
+    success = serial_manager.close_serial()
+    return jsonify({"status": "closed", "success": success})
+
 @socketio.on('connect')
 def handle_connect():
     emit('initial', {'data': serial_manager.get_latest_data()})
 
 @socketio.on('request_data')
 def send_latest_data():
-    emit('serial_data', {'data': serial_manager.get_latest_data()})
+    emit('serial_data', serial_manager.get_latest_data())
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
