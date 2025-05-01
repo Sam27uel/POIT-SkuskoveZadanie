@@ -8,7 +8,8 @@ tak sa brana zatvori.
 
 Do databaz budem ukladat vzdialenost zo snimaca a informacie o Open/Close brany (pohyby serva)
 
-Otvorenie a zatvorenie brany riadi aj pridane dve LEDky (jednoduchy Semafor)
+Otvorenie a zatvorenie brany riadi aj pridane dve LEDky (jednoduchy Semafor).
+
 Taktiez som pridal novu LED =ku na pin 5 ktora signalizuje OPEN/CLOSE, cize incializaciu.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
