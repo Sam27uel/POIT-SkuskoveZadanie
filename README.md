@@ -1,7 +1,8 @@
 **Riadenie servomotora s ultrazvukovym snimacom.**
-Aby malo zmysel co vobec riadim, a ako sa bude hybat servo, a zaroven sa da logicky riadit a nastavovat hodnotu zvolena tema:
+Aby malo zmysel co vobec riadim, a ako, a kedy sa bude hybat servo, pricom tema obsahuje logicke riadenie a nastavovanie hodnoty som zvolil priamu aplikaciu:
 
-Riadenie servomotorceka ktory bude otvarat a zatvarat branu (napr. pre auta na parkovisku)
+**Riadenie servomotorceka ktory bude otvarat a zatvarat branu (napr. pre auta na parkovisku)**
+
 Cez snimac sledujem vzdialenost a ak je hodnota mensia ako nastavena zvolena cez web (20cm default),
 tak sa brana pre auto otvori, ak sa potom uvazovane auto od snimaca vzdiali-prejde cez branu (2cm threshold)
 tak sa brana zatvori. 
