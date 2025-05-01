@@ -18,13 +18,13 @@
 <body>
   <nav>
     <a href="/">Ovládanie</a> |
-	<a href="/graph">Graf</a> |
-	<a href="/gauge">Ciferník</a>
+    <a href="/graph">Graf</a> |
+    <a href="/gauge">Ciferník</a>
   </nav>
   <hr>
 
   <h1>Živý graf vzdialenosti (cm)</h1>
-  <canvas id="distanceChart" width="600" height="300"></canvas>
+  <canvas id="distanceChart" width="600" height="250"></canvas>
 
   <script>
     const ctx = document.getElementById('distanceChart').getContext('2d');
@@ -68,6 +68,7 @@
 
     const chart = new Chart(ctx, config);
     let count = 0;
+    let updating = true;
 
     socket.on('connect', () => {
       setInterval(() => {
@@ -76,33 +77,26 @@
     });
 
     socket.on('serial_data', (payload) => {
-      const lines = payload.data;
+      updating = payload.running; // priamo z backendu
+
+      const lines = payload.data || [];
       const last = lines[lines.length - 1];
+
+      if (!updating || !last || !last.includes("Vzdialenosť")) return;
 
       const match = last.match(/Vzdialenosť:\s*([\d.]+)/);
       if (match) {
         let value = parseFloat(match[1]);
         if (value > 50) value = 50;
 
-        // Vyber farbu podľa zóny:
         let pointColor = 'gray';
-        if (value <= 15) {
-          pointColor = 'red';
-        } else if (value <= 30) {
-          pointColor = 'orange';
-        } else {
-          pointColor = 'green';
-        }
+        if (value <= 15) pointColor = 'red';
+        else if (value <= 30) pointColor = 'orange';
+        else pointColor = 'green';
 
         data.labels.push(count++);
         data.datasets[0].data.push(value);
         data.datasets[0].pointBackgroundColor.push(pointColor);
-
-        if (data.labels.length > 30) {
-          data.labels.shift();
-          data.datasets[0].data.shift();
-          data.datasets[0].pointBackgroundColor.shift();
-        }
 
         chart.update();
       }
