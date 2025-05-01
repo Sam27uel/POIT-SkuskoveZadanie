@@ -9,8 +9,8 @@
     }
     nav a {
       margin-right: 10px;
-      text-decoration: none;
       font-weight: bold;
+      text-decoration: none;
     }
     #semafor {
       width: 50px;
@@ -18,26 +18,43 @@
       border-radius: 50%;
       background-color: gray;
       border: 2px solid #000;
+      margin-top: 10px;
+    }
+    .btn {
+      padding: 10px 20px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+      color: white;
+    }
+    .green { background-color: green; }
+    .red { background-color: red; }
+    #statusBox, #monitorBox {
+      margin: 10px 0;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
   <nav>
     <a href="/">Ovládanie</a> |
-	<a href="/graph">Graf</a> |
-	<a href="/gauge">Ciferník</a>
+    <a href="/graph">Graf</a> |
+    <a href="/gauge">Ciferník</a>
   </nav>
   <hr>
 
   <h1>Riadenie brány pomocou senzora</h1>
 
-  <button onclick="openSerial()">Open</button><br><br>
+  <button id="toggleSerial" class="btn green" onclick="toggleSerial()">Open</button><br><br>
+  <div id="statusBox" style="color:red;">❌ Systém nie je inicializovaný</div>
 
   <label>Threshold (cm): <span id="thresholdValue">10</span></label><br>
   <input type="range" min="1" max="50" value="10" id="thresholdSlider"
          onchange="updateThreshold(this.value)"><br><br>
 
-  <button onclick="startMonitoring()">Start</button><br><br>
+  <button id="toggleMonitoring" class="btn green" onclick="toggleMonitoring()" disabled>Start</button><br><br>
+  <div id="monitorBox"></div>
 
   <h3>Stav brány:</h3>
   <div id="semafor"></div><br>
@@ -47,14 +64,78 @@
 
   <script>
     const socket = io();
-    let lastStatus = "unknown"; // uchováva posledný známy stav brány
+    let serialOpened = false;
+    let monitoringRunning = false;
+    let lastStatus = "unknown";
 
-    function openSerial() {
-      fetch('/open', { method: 'POST' })
-        .then(res => res.json())
-        .then(data => {
-          alert(data.success ? "Spojenie nadviazané" : "Zlyhanie spojenia");
+    function setStatusText(text, color = "black") {
+      const box = document.getElementById("statusBox");
+      box.innerText = text;
+      box.style.color = color;
+    }
+
+    function setMonitorText(text, color = "gray") {
+      const box = document.getElementById("monitorBox");
+      box.innerText = text;
+      box.style.color = color;
+    }
+
+    function toggleSerial() {
+      if (!serialOpened) {
+        fetch('/open', { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              serialOpened = true;
+              document.getElementById("toggleSerial").innerText = "Close";
+              document.getElementById("toggleSerial").classList.remove("green");
+              document.getElementById("toggleSerial").classList.add("red");
+              document.getElementById("toggleMonitoring").disabled = false;
+              setStatusText("✅ Inicializácia úspešná", "green");
+            } else {
+              alert("Zlyhanie spojenia");
+              setStatusText("❌ Nepodarilo sa inicializovať", "red");
+            }
+          });
+      } else {
+        fetch('/close', { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            serialOpened = false;
+            monitoringRunning = false;
+            document.getElementById("toggleSerial").innerText = "Open";
+            document.getElementById("toggleSerial").classList.remove("red");
+            document.getElementById("toggleSerial").classList.add("green");
+
+            document.getElementById("toggleMonitoring").innerText = "Start";
+            document.getElementById("toggleMonitoring").classList.remove("red");
+            document.getElementById("toggleMonitoring").classList.add("green");
+            document.getElementById("toggleMonitoring").disabled = true;
+
+            setStatusText("❌ Systém nie je inicializovaný", "red");
+            setMonitorText("");
+          });
+      }
+    }
+
+    function toggleMonitoring() {
+      if (!monitoringRunning) {
+        fetch('/start', { method: 'POST' }).then(() => {
+          monitoringRunning = true;
+          document.getElementById("toggleMonitoring").innerText = "Stop";
+          document.getElementById("toggleMonitoring").classList.remove("green");
+          document.getElementById("toggleMonitoring").classList.add("red");
+          setMonitorText("▶️ Monitorovanie spustené", "blue");
         });
+      } else {
+        fetch('/stop', { method: 'POST' }).then(() => {
+          monitoringRunning = false;
+          document.getElementById("toggleMonitoring").innerText = "Start";
+          document.getElementById("toggleMonitoring").classList.remove("red");
+          document.getElementById("toggleMonitoring").classList.add("green");
+          setMonitorText("⏹️ Monitorovanie zastavené", "darkred");
+        });
+      }
     }
 
     function updateThreshold(val) {
@@ -64,10 +145,6 @@
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `threshold=${val}`
       });
-    }
-
-    function startMonitoring() {
-      fetch('/start', { method: 'POST' });
     }
 
     socket.on('connect', () => {
@@ -83,29 +160,20 @@
 
       let status = null;
 
-      data.data.forEach(line => {
+      (data.data || []).forEach(line => {
         const li = document.createElement('li');
         li.innerText = line;
         list.appendChild(li);
 
-        if (line.includes("otvorená")) {
-          status = "open";
-        } else if (line.includes("zatvorená")) {
-          status = "closed";
-        }
+        if (line.includes("otvorená")) status = "open";
+        else if (line.includes("zatvorená")) status = "closed";
       });
 
-      if (status !== null) {
-        lastStatus = status;
-      }
+      if (status !== null) lastStatus = status;
 
-      if (lastStatus === "open") {
-        semafor.style.backgroundColor = "green";
-      } else if (lastStatus === "closed") {
-        semafor.style.backgroundColor = "red";
-      } else {
-        semafor.style.backgroundColor = "gray";
-      }
+      if (lastStatus === "open") semafor.style.backgroundColor = "green";
+      else if (lastStatus === "closed") semafor.style.backgroundColor = "red";
+      else semafor.style.backgroundColor = "gray";
     });
   </script>
 </body>
