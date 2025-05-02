@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <title>Záznamy z databázy</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+      background-color: #f9f9f9;
+    }
+
+    nav {
+      margin-bottom: 10px;
+    }
+    nav a {
+      margin-right: 10px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    select, button {
+      padding: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    select {
+      height: 40px;
+    }
+
+    #container {
+      display: flex;
+      gap: 30px;
+    }
+
+    .listBox {
+      width: 300px;
+      overflow-y: auto;
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+
+    #plot {
+      width: 700px;
+      height: 400px;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/">Ovládanie</a> |
+  <a href="/graph">Graf</a> |
+  <a href="/gauge">Ciferník</a> |
+  <a href="/database">Záznamy z databázy</a>
+</nav>
+<hr>
+
+<h2>Výber záznamu</h2>
+<select id="recordSelect"></select>
+<button onclick="loadRecord()">Načítať záznam</button>
+
+<div id="container">
+  <div id="plot"></div>
+
+  <div class="listBox">
+    <h3>Vzdialenosti (cm):</h3>
+    <ul id="valueList"></ul>
+  </div>
+
+  <div class="listBox">
+    <h3>Príkazy:</h3>
+    <ul id="commands"></ul>
+  </div>
+</div>
+
+<script>
+  function loadRecordList() {
+    fetch('/get_records')
+      .then(res => res.json())
+      .then(data => {
+        const select = document.getElementById('recordSelect');
+        select.innerHTML = '';
+        data.forEach(r => {
+          const option = document.createElement('option');
+          option.value = r.id;
+          option.innerText = `Záznam ${r.id} | ${r.start} - ${r.end || '...'}`
+          select.appendChild(option);
+        });
+      });
+  }
+
+  function loadRecord() {
+    const id = document.getElementById('recordSelect').value;
+    if (!id) return;
+
+    fetch(`/get_record_data/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        // Graf
+        const timestamps = data.values.map(v => v.timestamp);
+        const values = data.values.map(v => v.value);
+
+        const trace = {
+          x: timestamps,
+          y: values,
+          mode: 'lines+markers',
+          type: 'scatter',
+          name: 'Vzdialenosť (cm)'
+        };
+
+        Plotly.newPlot('plot', [trace], {
+          title: `Záznam ${id}`,
+          xaxis: { title: 'Čas' },
+          yaxis: { title: 'Vzdialenosť (cm)' }
+        });
+
+        // Výpis príkazov
+        const cmdList = document.getElementById('commands');
+        cmdList.innerHTML = '';
+        data.commands.forEach(cmd => {
+          const li = document.createElement('li');
+          li.innerText = `[${cmd.timestamp}] ${cmd.command}`;
+          cmdList.appendChild(li);
+        });
+
+        // Výpis hodnôt
+        const valList = document.getElementById('valueList');
+        valList.innerHTML = '';
+        data.values.forEach(v => {
+          const li = document.createElement('li');
+          li.innerText = `[${v.timestamp}] ${v.value} cm`;
+          valList.appendChild(li);
+        });
+      });
+  }
+
+  window.onload = loadRecordList;
+</script>
+
+</body>
+</html>
