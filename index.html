@@ -40,7 +40,8 @@
   <nav>
     <a href="/">Ovládanie</a> |
     <a href="/graph">Graf</a> |
-    <a href="/gauge">Ciferník</a>
+    <a href="/gauge">Ciferník</a> |
+    <a href="/database">Záznamy z databázy</a>
   </nav>
   <hr>
 
@@ -56,6 +57,9 @@
   <button id="toggleMonitoring" class="btn green" onclick="toggleMonitoring()" disabled>Start</button><br><br>
   <div id="monitorBox"></div>
 
+  <h3>Záznam do databázy:</h3>
+  <button id="toggleDbLogging" class="btn green">Start logging</button><br><br>
+
   <h3>Stav brány:</h3>
   <div id="semafor"></div><br>
 
@@ -66,6 +70,7 @@
     const socket = io();
     let serialOpened = false;
     let monitoringRunning = false;
+    let dbLogging = false;
     let lastStatus = "unknown";
 
     function setStatusText(text, color = "black") {
@@ -138,6 +143,26 @@
       }
     }
 
+    function toggleDbLogging() {
+      fetch('/toggle_db_logging', {
+        method: 'POST'
+      })
+      .then(res => res.json())
+      .then(data => {
+        dbLogging = data.recording;
+        const btn = document.getElementById("toggleDbLogging");
+        if (dbLogging) {
+          btn.innerText = "Stop logging";
+          btn.classList.remove("green");
+          btn.classList.add("red");
+        } else {
+          btn.innerText = "Start logging";
+          btn.classList.remove("red");
+          btn.classList.add("green");
+        }
+      });
+    }
+
     function updateThreshold(val) {
       document.getElementById("thresholdValue").innerText = val;
       fetch('/set_threshold', {
@@ -174,6 +199,11 @@
       if (lastStatus === "open") semafor.style.backgroundColor = "green";
       else if (lastStatus === "closed") semafor.style.backgroundColor = "red";
       else semafor.style.backgroundColor = "gray";
+    });
+
+    // ✅ Pridanie event handlera po načítaní DOM
+    document.addEventListener("DOMContentLoaded", function () {
+      document.getElementById("toggleDbLogging").addEventListener("click", toggleDbLogging);
     });
   </script>
 </body>
