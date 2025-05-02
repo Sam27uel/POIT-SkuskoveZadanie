@@ -1,6 +1,8 @@
 import serial
 import threading
 import time
+import MySQLdb
+from datetime import datetime
 
 PORT = '/dev/ttyACM0'
 BAUDRATE = 9600
@@ -9,6 +11,15 @@ ser = None
 is_running = False
 latest_lines = []
 threshold = 10
+
+# DB logovanie - funkcie poskytnuté z app.py
+recording_active_getter = None
+record_id_getter = None
+
+def set_recording_getters(active_fn, id_fn):
+    global recording_active_getter, record_id_getter
+    recording_active_getter = active_fn
+    record_id_getter = id_fn
 
 def init_serial():
     global ser
@@ -72,12 +83,43 @@ def read_serial_data():
                     latest_lines.append(line)
                     if len(latest_lines) > 1200:
                         latest_lines.pop(0)
+
+                    # 🔴 Ukladanie do DB ak je aktívne
+                    if recording_active_getter and recording_active_getter():
+                        record_id = record_id_getter()
+                        save_line_to_db(line, record_id)
+
             except Exception as e:
                 print("Chyba pri čítaní:", e)
         time.sleep(0.1)
 
+def save_line_to_db(line, record_id):
+    try:
+        db = MySQLdb.connect(host='localhost', user='root', passwd='admin', db='poit')
+        cursor = db.cursor()
+        now = datetime.now()
+
+        if "Vzdialenosť" in line:
+            # extrahuj číselnú hodnotu
+            import re
+            match = re.search(r'Vzdialenosť:\s*([\d.]+)', line)
+            if match:
+                value = float(match.group(1))
+                cursor.execute("INSERT INTO hodnoty (zaznam_id, timestamp, value) VALUES (%s, %s, %s)",
+                               (record_id, now, value))
+        else:
+            # iný riadok – ulož ako príkaz
+            cursor.execute("INSERT INTO prikazy (zaznam_id, timestamp, command) VALUES (%s, %s, %s)",
+                           (record_id, now, line))
+
+        db.commit()
+        cursor.close()
+        db.close()
+    except Exception as e:
+        print(f"Chyba pri ukladaní do DB: {e}")
+
 def get_latest_data():
     return {
-        "data": latest_lines[-15:],  # zoznam posledných výpisov
-        "running": is_running         # stav monitorovania
+        "data": latest_lines[-15:],
+        "running": is_running
     }
