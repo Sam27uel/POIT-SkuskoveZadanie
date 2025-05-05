@@ -1,25 +1,39 @@
 <!DOCTYPE html>
-<html>
+<html lang="sk">
 <head>
+  <meta charset="UTF-8">
   <title>Brána - Ovládanie</title>
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <style>
+    body {
+      background-color: #2c2f33;
+      color: #f1f1f1;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 20px;
+      padding: 20px;
+      text-align: center;
+    }
+
     nav {
-      margin-bottom: 10px;
+      text-align: center;
+      margin-bottom: 20px;
     }
+
     nav a {
-      margin-right: 10px;
-      font-weight: bold;
+      color: #4db8ff;
       text-decoration: none;
+      margin-right: 15px;
+      font-weight: bold;
     }
-    #semafor {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background-color: gray;
-      border: 2px solid #000;
-      margin-top: 10px;
+
+    h1, h3 {
+      color: #ffffff;
     }
+
+    section {
+      margin-bottom: 30px;
+    }
+
     .btn {
       padding: 10px 20px;
       font-weight: bold;
@@ -27,12 +41,42 @@
       cursor: pointer;
       border-radius: 5px;
       color: white;
+      margin-bottom: 10px;
     }
-    .green { background-color: green; }
-    .red { background-color: red; }
-    #statusBox, #monitorBox {
-      margin: 10px 0;
+
+    .green { background-color: #2ecc71; }
+    .red { background-color: #e74c3c; }
+    .blue { background-color: #3498db; }
+
+    #thresholdSlider {
+      width: 200px;
+    }
+
+    #semafor {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: gray;
+      border: 2px solid #fff;
+      margin: 15px auto;
+    }
+
+    #statusBox, #monitorBox, #manualStatus {
       font-weight: bold;
+      margin-top: 10px;
+    }
+
+    #dataList {
+      list-style: none;
+      padding: 5px;
+      background-color: #2a2a2a;
+      border-radius: 6px;
+      font-family: monospace;
+      margin: 10px auto;
+      width: 600px;
+      height: 250px;
+      overflow-y: auto;
+      text-align: center;
     }
   </style>
 </head>
@@ -41,48 +85,83 @@
     <a href="/">Ovládanie</a> |
     <a href="/graph">Graf</a> |
     <a href="/gauge">Ciferník</a> |
-    <a href="/database">Záznamy z databázy</a>
+    <a href="/database">Záznamy z databázy</a> |
+    <a href="/files">Záznamy zo súboru</a>
   </nav>
   <hr>
-
   <h1>Riadenie brány pomocou senzora</h1>
 
-  <button id="toggleSerial" class="btn green" onclick="toggleSerial()">Open</button><br><br>
-  <div id="statusBox" style="color:red;">❌ Systém nie je inicializovaný</div>
+  <section>
+    <div style="display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;">
+      <div>
+        <button id="toggleSerial" class="btn green" onclick="toggleSerial()">Open</button>
+        <div id="statusBox" style="color:red;">❌ Systém nie je inicializovaný</div>
+      </div>
 
-  <label>Threshold (cm): <span id="thresholdValue">10</span></label><br>
-  <input type="range" min="1" max="50" value="10" id="thresholdSlider"
-         onchange="updateThreshold(this.value)"><br><br>
+      <div>
+        <label>Threshold (cm): <span id="thresholdValue">10</span></label><br>
+        <input type="range" min="1" max="50" value="10" id="thresholdSlider"
+               onchange="updateThreshold(this.value)">
+      </div>
 
-  <button id="toggleMonitoring" class="btn green" onclick="toggleMonitoring()" disabled>Start</button><br><br>
-  <div id="monitorBox"></div>
+      <div>
+        <button id="toggleMonitoring" class="btn green" onclick="toggleMonitoring()" disabled>Start</button>
+        <div id="monitorBox" style="color:red;">❌ Monitorovanie neaktívne</div>
+      </div>
+    </div>
+  </section>
 
-  <h3>Záznam do databázy:</h3>
-  <button id="toggleDbLogging" class="btn green">Start logging</button><br><br>
+  <section>
+    <div style="display: flex; justify-content: center; gap: 80px; flex-wrap: wrap;">
+      <div>
+        <h3>Záznam do databázy:</h3>
+        <button id="toggleDbLogging" class="btn green" onclick="toggleDbLogging()">Start logging</button>
+      </div>
+      <div>
+        <h3>Záznam do súboru:</h3>
+        <button id="toggleFileLogging" class="btn green" onclick="toggleFileLogging()">Start file logging</button>
+      </div>
+    </div>
+  </section>
 
   <h3>Stav brány:</h3>
-  <div id="semafor"></div><br>
+  <div id="semafor"></div>
 
-  <h3>Údaje zo senzora:</h3>
-  <ul id="dataList"></ul>
+  <section>
+    <h3>Údaje zo serial:</h3>
+    <ul id="dataList"></ul>
+  </section>
+
+  <section>
+    <div style="display: inline-block; background-color: #2a2a2a; padding: 20px; border-radius: 10px; border: 1px solid #555; min-width: 250px;">
+      <h3 style="margin-bottom: 15px;">Manuálne ovládanie</h3>
+      <button onclick="setManualMode()" class="btn blue" id="btnManual" disabled>Režim MANUÁL</button>
+      <button onclick="openGateManual()" class="btn green" id="btnOpen" disabled>Otvor bránu</button>
+      <button onclick="closeGateManual()" class="btn red" id="btnClose" disabled>Zatvor bránu</button>
+      <div id="manualStatus" style="margin-top: 15px;">Režim: neaktívny</div>
+      <div id="manualInfo" style="margin-top: 10px; color: orange;">
+        ❗ Systém nie je inicializovaný – aktivuj Open
+      </div>
+    </div>
+  </section>
 
   <script>
     const socket = io();
     let serialOpened = false;
     let monitoringRunning = false;
     let dbLogging = false;
+    let fileLogging = false;
     let lastStatus = "unknown";
+    let isManual = false;
 
-    function setStatusText(text, color = "black") {
-      const box = document.getElementById("statusBox");
-      box.innerText = text;
-      box.style.color = color;
+    function setStatusText(text, color = "white") {
+      document.getElementById("statusBox").innerText = text;
+      document.getElementById("statusBox").style.color = color;
     }
 
-    function setMonitorText(text, color = "gray") {
-      const box = document.getElementById("monitorBox");
-      box.innerText = text;
-      box.style.color = color;
+    function setMonitorText(text, color = "white") {
+      document.getElementById("monitorBox").innerText = text;
+      document.getElementById("monitorBox").style.color = color;
     }
 
     function toggleSerial() {
@@ -96,16 +175,21 @@
               document.getElementById("toggleSerial").classList.remove("green");
               document.getElementById("toggleSerial").classList.add("red");
               document.getElementById("toggleMonitoring").disabled = false;
-              setStatusText("✅ Inicializácia úspešná", "green");
+              setStatusText("✅ Inicializácia úspešná", "lightgreen");
+
+              // Povoliť manuálne ovládanie
+              document.getElementById("btnManual").disabled = false;
+              document.getElementById("btnOpen").disabled = false;
+              document.getElementById("btnClose").disabled = false;
+              document.getElementById("manualInfo").style.display = "none";
             } else {
-              alert("Zlyhanie spojenia");
-              setStatusText("❌ Nepodarilo sa inicializovať", "red");
+              setStatusText("❌ Nepodarilo sa inicializovať", "#ff7272");
             }
           });
       } else {
         fetch('/close', { method: 'POST' })
           .then(res => res.json())
-          .then(data => {
+          .then(() => {
             serialOpened = false;
             monitoringRunning = false;
             document.getElementById("toggleSerial").innerText = "Open";
@@ -117,59 +201,116 @@
             document.getElementById("toggleMonitoring").classList.add("green");
             document.getElementById("toggleMonitoring").disabled = true;
 
-            setStatusText("❌ Systém nie je inicializovaný", "red");
-            setMonitorText("");
+            setStatusText("❌ Systém nie je inicializovaný", "#ff7272");
+            setMonitorText("❌ Monitorovanie neaktívne", "#ff7272");
+
+            document.getElementById("btnManual").disabled = true;
+            document.getElementById("btnOpen").disabled = true;
+            document.getElementById("btnClose").disabled = true;
+            document.getElementById("manualInfo").style.display = "block";
           });
       }
     }
 
     function toggleMonitoring() {
+      const btn = document.getElementById("toggleMonitoring");
       if (!monitoringRunning) {
         fetch('/start', { method: 'POST' }).then(() => {
           monitoringRunning = true;
-          document.getElementById("toggleMonitoring").innerText = "Stop";
-          document.getElementById("toggleMonitoring").classList.remove("green");
-          document.getElementById("toggleMonitoring").classList.add("red");
-          setMonitorText("▶️ Monitorovanie spustené", "blue");
+          btn.innerText = "Stop";
+          btn.classList.remove("green");
+          btn.classList.add("red");
+          setMonitorText("▶️ Monitorovanie spustené", "#00bfff");
         });
       } else {
         fetch('/stop', { method: 'POST' }).then(() => {
           monitoringRunning = false;
-          document.getElementById("toggleMonitoring").innerText = "Start";
-          document.getElementById("toggleMonitoring").classList.remove("red");
-          document.getElementById("toggleMonitoring").classList.add("green");
-          setMonitorText("⏹️ Monitorovanie zastavené", "darkred");
+          btn.innerText = "Start";
+          btn.classList.remove("red");
+          btn.classList.add("green");
+          setMonitorText("⏹️ Monitorovanie zastavené", "#f39c12");
         });
       }
     }
 
-    function toggleDbLogging() {
-      fetch('/toggle_db_logging', {
-        method: 'POST'
-      })
-      .then(res => res.json())
-      .then(data => {
-        dbLogging = data.recording;
-        const btn = document.getElementById("toggleDbLogging");
-        if (dbLogging) {
-          btn.innerText = "Stop logging";
-          btn.classList.remove("green");
-          btn.classList.add("red");
-        } else {
-          btn.innerText = "Start logging";
-          btn.classList.remove("red");
-          btn.classList.add("green");
-        }
+	function toggleDbLogging() {
+	  if (!serialOpened) {
+		alert("⚠️ Systém nie je inicializovaný. Použi najprv tlačidlo Open.");
+		return;
+	  }
+	  fetch('/toggle_db_logging', { method: 'POST' })
+		.then(res => res.json())
+		.then(data => {
+		  dbLogging = data.recording;
+		  const btn = document.getElementById("toggleDbLogging");
+		  btn.innerText = dbLogging ? "Stop logging" : "Start logging";
+		  btn.classList.toggle("green", !dbLogging);
+		  btn.classList.toggle("red", dbLogging);
+		});
+	}
+
+	function toggleFileLogging() {
+	  if (!serialOpened) {
+		alert("⚠️ Systém nie je inicializovaný. Použi najprv tlačidlo Open.");
+		return;
+	  }
+	  fetch('/toggle_file_logging', { method: 'POST' })
+		.then(res => res.json())
+		.then(data => {
+		  fileLogging = data.logging;
+		  const btn = document.getElementById("toggleFileLogging");
+		  btn.innerText = fileLogging ? "Stop file logging" : "Start file logging";
+		  btn.classList.toggle("green", !fileLogging);
+		  btn.classList.toggle("red", fileLogging);
+		});
+	}
+
+
+	function updateThreshold(val) {
+	  if (!serialOpened) {
+		alert("⚠️ Nemôžeš nastaviť threshold – systém nie je inicializovaný.");
+		document.getElementById("thresholdSlider").value = thresholdValue; // reset späť
+		return;
+	  }
+	  document.getElementById("thresholdValue").innerText = val;
+	  fetch('/set_threshold', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+		body: `threshold=${val}`
+	  });
+	}
+
+
+    function setManualMode() {
+      fetch('/send_command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: "M" })
       });
+      isManual = true;
+      document.getElementById("manualStatus").innerText = "Režim: MANUÁLNY";
     }
 
-    function updateThreshold(val) {
-      document.getElementById("thresholdValue").innerText = val;
-      fetch('/set_threshold', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `threshold=${val}`
-      });
+    function openGateManual() {
+      if (isManual) {
+        fetch('/send_command', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: "O" })
+        });
+        document.getElementById("manualStatus").innerText = "➡️ Brána otvorená (manuálne)";
+      }
+    }
+
+    function closeGateManual() {
+      if (isManual) {
+        fetch('/send_command', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: "C" })
+        });
+        document.getElementById("manualStatus").innerText = "⬅️ Brána zatvorená (manuálne)";
+      }
     }
 
     socket.on('connect', () => {
@@ -199,11 +340,6 @@
       if (lastStatus === "open") semafor.style.backgroundColor = "green";
       else if (lastStatus === "closed") semafor.style.backgroundColor = "red";
       else semafor.style.backgroundColor = "gray";
-    });
-
-    // ✅ Pridanie event handlera po načítaní DOM
-    document.addEventListener("DOMContentLoaded", function () {
-      document.getElementById("toggleDbLogging").addEventListener("click", toggleDbLogging);
     });
   </script>
 </body>

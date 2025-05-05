@@ -2,7 +2,7 @@
 <html lang="sk">
 <head>
   <meta charset="UTF-8">
-  <title>Záznamy z databázy</title>
+  <title>Záznamy zo súborov (JSON)</title>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
     body {
@@ -102,9 +102,9 @@
 </nav>
 <hr>
 
-<h2>Výber záznamu z DB</h2>
-<select id="recordSelect"></select>
-<button onclick="loadRecord()">Načítať záznam</button>
+<h2>Výber JSON logu</h2>
+<select id="logSelect"></select>
+<button onclick="loadJsonLog()">Načítať záznam</button>
 
 <div id="container">
   <div id="plot"></div>
@@ -116,34 +116,33 @@
 
   <div class="listBox">
     <h3>Príkazy:</h3>
-    <ul id="commands"></ul>
+    <ul id="commandList"></ul>
   </div>
 </div>
 
 <script>
-  function loadRecordList() {
-    fetch('/get_records')
+  function loadLogList() {
+    fetch('/get_json_logs')
       .then(res => res.json())
       .then(data => {
-        const select = document.getElementById('recordSelect');
+        const select = document.getElementById('logSelect');
         select.innerHTML = '';
-        data.forEach(r => {
+        data.files.forEach(file => {
           const option = document.createElement('option');
-          option.value = r.id;
-          option.innerText = `Záznam ${r.id} | ${r.start} - ${r.end || '...'}`;
+          option.value = file;
+          option.innerText = file;
           select.appendChild(option);
         });
       });
   }
 
-  function loadRecord() {
-    const id = document.getElementById('recordSelect').value;
-    if (!id) return;
+  function loadJsonLog() {
+    const file = document.getElementById('logSelect').value;
+    if (!file) return;
 
-    fetch(`/get_record_data/${id}`)
+    fetch(`/get_json_log_data/${file}`)
       .then(res => res.json())
       .then(data => {
-        // Graf
         const timestamps = data.values.map(v => v.timestamp);
         const values = data.values.map(v => v.value);
 
@@ -158,7 +157,7 @@
         };
 
         Plotly.newPlot('plot', [trace], {
-          title: `Záznam ${id}`,
+          title: `Súbor: ${file}`,
           paper_bgcolor: '#3a3d42',
           plot_bgcolor: '#2a2a2a',
           font: { color: '#ffffff' },
@@ -166,16 +165,6 @@
           yaxis: { title: 'Vzdialenosť (cm)' }
         });
 
-        // Výpis príkazov
-        const cmdList = document.getElementById('commands');
-        cmdList.innerHTML = '';
-        data.commands.forEach(cmd => {
-          const li = document.createElement('li');
-          li.innerText = `[${cmd.timestamp}] ${cmd.command}`;
-          cmdList.appendChild(li);
-        });
-
-        // Výpis hodnôt
         const valList = document.getElementById('valueList');
         valList.innerHTML = '';
         data.values.forEach(v => {
@@ -183,10 +172,18 @@
           li.innerText = `[${v.timestamp}] ${v.value} cm`;
           valList.appendChild(li);
         });
+
+        const cmdList = document.getElementById('commandList');
+        cmdList.innerHTML = '';
+        data.commands.forEach(cmd => {
+          const li = document.createElement('li');
+          li.innerText = `[${cmd.timestamp}] ${cmd.command}`;
+          cmdList.appendChild(li);
+        });
       });
   }
 
-  window.onload = loadRecordList;
+  window.onload = loadLogList;
 </script>
 
 </body>
